@@ -1,0 +1,124 @@
+<!doctype html>
+<html lang="es"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Detector de formas sobre mapa satelital</title>
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<style>
+:root{--bg:#f6f5f0;--cd:#fff;--tx:#1d2418;--mu:#6b7266;--ac:#2f7d3a;--bd:#dcdad0}
+@media(prefers-color-scheme:dark){:root{--bg:#14180f;--cd:#1e2418;--tx:#e8ece2;--mu:#9aa393;--ac:#6cc27a;--bd:#323a2b}}
+*{box-sizing:border-box}html,body{height:100%;margin:0}
+body{background:var(--bg);color:var(--tx);font:14px/1.4 system-ui,-apple-system,Segoe UI,sans-serif;display:grid;grid-template-columns:330px 1fr}
+@media(max-width:800px){body{grid-template-columns:1fr;grid-template-rows:58vh auto;height:auto}#map{order:-1;height:58vh}}
+aside{background:var(--cd);border-right:1px solid var(--bd);padding:12px;overflow:auto;height:100vh}
+@media(max-width:800px){aside{height:auto}}
+#map{height:100vh;width:100%}
+h1{font-size:17px;margin:0 0 4px}h2{font-size:12px;text-transform:uppercase;letter-spacing:.05em;color:var(--mu);margin:14px 0 6px}
+p.s{color:var(--mu);margin:0 0 8px;font-size:12px}
+button,select,input[type=search]{font:inherit;border-radius:8px;padding:7px 10px;margin:0 4px 4px 0}
+button{background:var(--ac);color:#fff;border:0;cursor:pointer}button.o{background:transparent;color:var(--tx);border:1px solid var(--bd)}
+select,input[type=search]{background:var(--cd);color:var(--tx);border:1px solid var(--bd);width:100%}
+label.r{display:block;margin:6px 0}label.r span{float:right;color:var(--mu)}
+input[type=range]{width:100%;accent-color:var(--ac)}
+.chk label{display:inline-flex;align-items:center;gap:5px;margin:0 10px 4px 0}
+.sw{width:11px;height:11px;border-radius:3px;display:inline-block}
+#res div{display:flex;justify-content:space-between;border-bottom:1px solid var(--bd);padding:3px 0;font-size:12px;cursor:pointer}
+#res{max-height:260px;overflow:auto}
+#msg{color:var(--mu);font-size:12px;min-height:18px}
+.lb{background:#000a;color:#fff;border:0;box-shadow:none;padding:0 4px;font-weight:700}
+.lb:before{display:none}
+</style></head><body>
+<aside>
+<h1>🛰️ Detector de formas en el mapa</h1>
+<p class="s">Mueve y acerca el mapa a la zona (zoom 15–19 funciona mejor) y pulsa «Analizar vista». Las formas se dibujan sobre el mapa, con medidas reales.</p>
+<form id="sf" style="display:flex"><input type="search" id="q" placeholder="Buscar lugar…"><button>Ir</button></form>
+<select id="base"><option value="sat">Mapa: satélite (Esri)</option><option value="osm">Mapa: calles (OpenStreetMap)</option></select>
+<button id="go">Analizar vista</button>
+<label style="display:inline-flex;gap:5px;align-items:center"><input type="checkbox" id="auto"> Analizar al mover</label>
+<div id="msg"></div>
+<h2>Objetivo</h2>
+<select id="tg"><option value="0">Analizar: vegetación</option><option value="1">Analizar: suelo / no vegetación</option></select>
+<label class="chk" style="display:block"><input type="checkbox" id="mk"> Mostrar máscara sobre el mapa</label>
+<h2>Filtros</h2><div id="sl"></div>
+<h2>Formas a detectar</h2><div class="chk" id="ck"></div>
+<h2>Resultados</h2><div id="res"><p class="s">Sin análisis todavía.</p></div>
+</aside>
+<div id="map"></div>
+<script>
+const $=id=>document.getElementById(id);
+const SL=[['thr','Umbral de vegetación (ExG)',0,50,10,''],['smo','Suavizado de máscara',0,5,2,''],['amin','Área mínima (px de pantalla)',100,8000,600,''],['tol','Tolerancia rectángulo (%)',70,98,85,'%'],['ed','Umbral de bordes',30,400,150,''],['ml','Longitud mínima de línea (px)',20,300,80,'']];
+const SH=[['li','Líneas','#ff3b30'],['re','Rectángulos','#ffd60a'],['sq','Cuadrados','#0a84ff'],['ci','Círculos','#ff2dd0']];
+$('sl').innerHTML=SL.map(s=>`<label class="r">${s[1]}<span id="o_${s[0]}"></span><input type="range" id="${s[0]}" min="${s[2]}" max="${s[3]}" value="${s[4]}"></label>`).join('');
+$('ck').innerHTML=SH.map(s=>`<label><input type="checkbox" id="c_${s[0]}" checked><i class="sw" style="background:${s[2]}"></i>${s[1]}</label>`).join('');
+const map=L.map('map',{zoomSnap:1}).setView([20.12,-98.73],16);
+const bases={sat:L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}',{maxZoom:19,crossOrigin:'anonymous',attribution:'Imágenes © Esri'}),
+osm:L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png',{maxZoom:19,crossOrigin:'anonymous',attribution:'© OpenStreetMap'})};
+let cur=bases.sat.addTo(map);
+$('base').onchange=e=>{map.removeLayer(cur);cur=bases[e.target.value].addTo(map)};
+const gS=L.layerGroup().addTo(map),gM=L.layerGroup().addTo(map);
+$('sf').onsubmit=async e=>{e.preventDefault();const q=$('q').value.trim();if(!q)return;try{const r=await(await fetch('https://nominatim.openstreetmap.org/search?format=json&limit=1&q='+encodeURIComponent(q))).json();
+if(r[0]){const b=r[0].boundingbox.map(Number);map.fitBounds([[b[0],b[2]],[b[1],b[3]]],{maxZoom:18})}else msg('Lugar no encontrado')}catch(_){msg('No se pudo buscar el lugar')}};
+const msg=t=>$('msg').textContent=t||'';
+let W,H,S,src,Z,TL,MPP,BND,tm;
+function capture(){const c=map.getContainer(),r=c.getBoundingClientRect();S=Math.min(1,1100/Math.max(r.width,r.height));W=Math.round(r.width*S);H=Math.round(r.height*S);
+const cv=document.createElement('canvas');cv.width=W;cv.height=H;const g=cv.getContext('2d',{willReadFrequently:true});g.fillStyle='#000';g.fillRect(0,0,W,H);
+const cs=[...map.getPane('tilePane').querySelectorAll('.leaflet-tile-container')].sort((a,b)=>(+a.style.zIndex||0)-(+b.style.zIndex||0));
+cs.forEach(k=>k.querySelectorAll('img').forEach(im=>{if(!im.complete||!im.naturalWidth)return;const b=im.getBoundingClientRect();g.drawImage(im,(b.left-r.left)*S,(b.top-r.top)*S,b.width*S,b.height*S)}));
+try{src=g.getImageData(0,0,W,H)}catch(e){msg('No se pudo leer el mapa (restricción CORS). Usa el mapa satélite Esri o abre el archivo en Chrome/Edge/Firefox.');return false}
+Z=map.getZoom();TL=map.project(map.containerPointToLatLng([0,0]),Z);BND=map.getBounds();
+MPP=40075016.686*Math.cos(map.getCenter().lat*Math.PI/180)/(256*Math.pow(2,Z));return true}
+const ll=(x,y)=>map.unproject(TL.add([x/S,y/S]),Z);
+const fm=m=>m>=1000?(m/1000).toFixed(2)+' km':Math.round(m)+' m';
+const fa=a=>a>=10000?(a/10000).toFixed(2)+' ha':Math.round(a)+' m²';
+function detect(){if(!src)return;const v=k=>+$(k).value;SL.forEach(s=>$('o_'+s[0]).textContent=$(s[0]).value+s[5]);
+gS.clearLayers();gM.clearLayers();const d=src.data,n=W*H,exg=new Float32Array(n),gr=new Float32Array(n);
+for(let i=0;i<n;i++){const r=d[4*i],g=d[4*i+1],b=d[4*i+2];gr[i]=.299*r+.587*g+.114*b;exg[i]=(2*g-r-b)/255}
+const thr=v('thr')/100,tg=+$('tg').value;let m=new Uint8Array(n);
+for(let i=0;i<n;i++)m[i]=(exg[i]>thr)!=(tg==1)?1:0;
+for(let k=0;k<v('smo');k++){const o=new Uint8Array(n);for(let y=1;y<H-1;y++)for(let x=1;x<W-1;x++){const p=y*W+x;o[p]=(m[p-W-1]+m[p-W]+m[p-W+1]+m[p-1]+m[p]+m[p+1]+m[p+W-1]+m[p+W]+m[p+W+1])>=5?1:0}m=o}
+if($('mk').checked){const c=document.createElement('canvas');c.width=W;c.height=H;const g=c.getContext('2d'),im=g.createImageData(W,H);
+for(let i=0;i<n;i++)if(m[i]){im.data[4*i]=40;im.data[4*i+1]=230;im.data[4*i+2]=80;im.data[4*i+3]=110}g.putImageData(im,0,0);L.imageOverlay(c.toDataURL(),BND,{interactive:false}).addTo(gM)}
+const out=[],on=k=>$('c_'+k).checked,col=k=>SH.find(s=>s[0]==k)[2],add=(k,txt,layer)=>{layer.addTo(gS);out.push({k,txt,layer})};
+if(on('re')||on('sq')||on('ci')){const lab=new Uint8Array(n),st=new Int32Array(n),amin=v('amin'),tol=v('tol')/100;
+for(let s=0;s<n;s++){if(!m[s]||lab[s])continue;let sp=0,a=0,sx=0,sy=0;const b=[];st[sp++]=s;lab[s]=1;
+while(sp){const p=st[--sp],x=p%W,y=(p/W)|0;a++;sx+=x;sy+=y;let e=false;
+for(const q of [x>0?p-1:-1,x<W-1?p+1:-1,y>0?p-W:-1,y<H-1?p+W:-1]){if(q<0||!m[q])e=true;else if(!lab[q]){lab[q]=1;st[sp++]=q}}if(e)b.push(x,y)}
+if(a<amin)continue;const mx=sx/a,my=sy/a;let best=null;
+for(let t=0;t<90;t+=3){const co=Math.cos(t*Math.PI/180),si=Math.sin(t*Math.PI/180);let u0=1e9,u1=-1e9,v0=1e9,v1=-1e9;
+for(let i=0;i<b.length;i+=2){const u=b[i]*co+b[i+1]*si,w=-b[i]*si+b[i+1]*co;if(u<u0)u0=u;if(u>u1)u1=u;if(w<v0)v0=w;if(w>v1)v1=w}
+const ar=(u1-u0+1)*(v1-v0+1);if(!best||ar<best.ar)best={ar,co,si,u0,u1,v0,v1}}
+const w=best.u1-best.u0+1,h=best.v1-best.v0+1,fill=a/best.ar,ratio=Math.min(w,h)/Math.max(w,h),nb=b.length/2;
+let ds=0,ds2=0;for(let i=0;i<b.length;i+=2){const q=Math.hypot(b[i]-mx,b[i+1]-my);ds+=q;ds2+=q*q}
+const mr=ds/nb,sd=Math.sqrt(Math.max(0,ds2/nb-mr*mr))/mr;let kind=null;
+if(sd<.1&&ratio>.85&&fill>.68&&fill<.86)kind='ci';else if(fill>=tol)kind=ratio>.88?'sq':'re';
+if(!kind||!on(kind))continue;const o={color:col(kind),weight:3,fillOpacity:.12};
+if(kind=='ci'){const rm=mr/S*MPP;add(kind,`Círculo ⌀ ${fm(2*rm)} · ${fa(Math.PI*rm*rm)}`,L.circle(ll(mx,my),{...o,radius:rm}))}
+else{const P=[[best.u0,best.v0],[best.u1,best.v0],[best.u1,best.v1],[best.u0,best.v1]].map(([u,q])=>ll(u*best.co-q*best.si,u*best.si+q*best.co));
+const wm=w/S*MPP,hm=h/S*MPP;add(kind,`${kind=='sq'?'Cuadrado':'Rectángulo'} ${fm(Math.max(wm,hm))}×${fm(Math.min(wm,hm))} · ${fa(wm*hm)}`,L.polygon(P,o))}}}
+if(on('li')){const bl=new Float32Array(n);for(let y=1;y<H-1;y++)for(let x=1;x<W-1;x++){const p=y*W+x;bl[p]=(gr[p-W-1]+gr[p-W]+gr[p-W+1]+gr[p-1]+gr[p]+gr[p+1]+gr[p+W-1]+gr[p+W]+gr[p+W+1])/9}
+const E=new Uint8Array(n),et=v('ed'),ep=[];
+for(let y=2;y<H-2;y++)for(let x=2;x<W-2;x++){const p=y*W+x;
+const gx=bl[p-W+1]+2*bl[p+1]+bl[p+W+1]-bl[p-W-1]-2*bl[p-1]-bl[p+W-1],gy=bl[p+W-1]+2*bl[p+W]+bl[p+W+1]-bl[p-W-1]-2*bl[p-W]-bl[p-W+1];
+if(Math.abs(gx)+Math.abs(gy)>et){E[p]=1;ep.push(p)}}
+const T=90,D=Math.ceil(Math.hypot(W,H)),R=2*D+1,acc=new Uint16Array(T*R),tc=[],ts=[];
+for(let t=0;t<T;t++){tc.push(Math.cos(t*2*Math.PI/180));ts.push(Math.sin(t*2*Math.PI/180))}
+for(const p of ep){const x=p%W,y=(p/W)|0;for(let t=0;t<T;t++)acc[t*R+Math.round(x*tc[t]+y*ts[t])+D]++}
+const ml=v('ml'),cand=[];for(let i=0;i<acc.length;i++)if(acc[i]>=ml)cand.push(i);
+cand.sort((a,b)=>acc[b]-acc[a]);const pk=[];
+for(const i of cand){const t=(i/R)|0,r=i%R;if(pk.some(q=>Math.min(Math.abs(q.t-t),T-Math.abs(q.t-t))<=2&&Math.abs(q.r-r)<=8))continue;pk.push({t,r});if(pk.length>=40)break}
+for(const{t,r}of pk){const rho=r-D,ox=rho*tc[t],oy=rho*ts[t],dx=-ts[t],dy=tc[t];let run=0,gap=0,s0=0,bL=0,bs=0,be=0;
+for(let s=-D;s<=D;s++){const x=Math.round(ox+dx*s),y=Math.round(oy+dy*s);let hit=false;
+if(x>1&&y>1&&x<W-2&&y<H-2)hit=E[y*W+x]||E[y*W+x+1]||E[y*W+x-1]||E[(y+1)*W+x]||E[(y-1)*W+x];
+if(hit){if(!run)s0=s;run=1;gap=0;if(s-s0>bL){bL=s-s0;bs=s0;be=s}}else if(run&&++gap>5)run=0}
+if(bL>=ml)add('li',`Línea ${fm(bL/S*MPP)} · rumbo ${Math.round((t*2+90)%180)}°`,L.polyline([ll(ox+dx*bs,oy+dy*bs),ll(ox+dx*be,oy+dy*be)],{color:col('li'),weight:3}))}}
+out.forEach((o,i)=>{o.layer.bindTooltip(String(i+1),{permanent:true,direction:'center',className:'lb'});o.layer.bindPopup(`${i+1}. ${o.txt}`)});
+const cnt=k=>out.filter(o=>o.k==k).length;
+$('res').innerHTML=out.length?`<div><b>Total</b><b>${out.length}</b></div>`+SH.map(s=>`<div><span><i class="sw" style="background:${s[2]}"></i> ${s[1]}</span><span>${cnt(s[0])}</span></div>`).join('')+out.map((o,i)=>`<div data-i="${i}"><span>${i+1}. ${o.txt}</span></div>`).join(''):'<p class="s">No se detectaron formas. Ajusta umbrales, área mínima o el zoom.</p>';
+$('res').querySelectorAll('div[data-i]').forEach(e=>e.onclick=()=>{const l=out[+e.dataset.i].layer;map.fitBounds(l.getBounds().pad(.6));l.openPopup()});
+msg(`Análisis listo · ${out.length} formas · ${(MPP/S).toFixed(2)} m/px`)}
+function analyze(){msg('Analizando…');setTimeout(()=>{if(capture())detect()},30)}
+$('go').onclick=analyze;
+document.querySelectorAll('aside input[type=range],aside input[type=checkbox]:not(#auto),#tg').forEach(e=>e.addEventListener('input',()=>{clearTimeout(tm);tm=setTimeout(detect,80)}));
+let am;map.on('moveend',()=>{if($('auto').checked){clearTimeout(am);am=setTimeout(analyze,1000)}});
+SL.forEach(s=>$('o_'+s[0]).textContent=$(s[0]).value+s[5]);
+</script></body></html>
