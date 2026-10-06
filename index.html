@@ -3,433 +3,273 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>Analizador de Relieve y Formas</title>
+<title>Detector de formas y relieve</title>
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
 <style>
-:root{--bg:#f4f7fb;--card:#fff;--tx:#172033;--muted:#667085;--line:#dbe2ea;--blue:#2563eb;--teal:#14b8a6;--red:#ef4444;--amber:#f59e0b;--green:#16a34a}
-*{box-sizing:border-box}html,body{height:100%;margin:0}
-body{font-family:system-ui,-apple-system,Segoe UI,Roboto,Arial,sans-serif;background:var(--bg);color:var(--tx);display:grid;grid-template-columns:360px 1fr}
-#map{height:100vh;width:100%}
-aside{height:100vh;overflow:auto;background:var(--card);border-right:1px solid var(--line);padding:14px}
-h1{font-size:19px;margin:0 0 3px}h2{font-size:12px;text-transform:uppercase;letter-spacing:.06em;color:var(--muted);margin:16px 0 7px}
-.small{font-size:12px;color:var(--muted);line-height:1.4}
-.row{display:flex;gap:6px;flex-wrap:wrap}.row>*{flex:1;min-width:110px}
-button,select,input{font:inherit;border-radius:9px;min-height:38px}
-button{border:0;padding:8px 11px;background:var(--blue);color:#fff;cursor:pointer;font-weight:600}
-button.secondary{background:#eef2f7;color:var(--tx);border:1px solid var(--line)}
-button.danger{background:#fee2e2;color:#991b1b;border:1px solid #fecaca}
-button:disabled{opacity:.5;cursor:not-allowed}
-select,input[type=search],input[type=number]{width:100%;border:1px solid var(--line);background:#fff;padding:8px}
-#status{min-height:22px;margin-top:7px;font-size:12px;color:var(--muted)}
-.card{border:1px solid var(--line);border-radius:12px;padding:10px;margin-top:8px;background:#fff}
-.grid2{display:grid;grid-template-columns:1fr 1fr;gap:7px}
-.metric{background:#f8fafc;border-radius:9px;padding:8px}.metric b{display:block;font-size:16px}.metric span{font-size:11px;color:var(--muted)}
-#results{max-height:300px;overflow:auto}.result{border-bottom:1px solid var(--line);padding:8px 2px;cursor:pointer}.result:last-child{border-bottom:0}
-.badge{display:inline-block;border-radius:999px;padding:2px 7px;font-size:10px;font-weight:700;background:#e8eefc}
-#profile{width:100%;height:170px;border:1px solid var(--line);border-radius:10px;background:#fafafa}
-.legend{display:flex;gap:8px;flex-wrap:wrap;font-size:11px;color:var(--muted)}.dot{width:10px;height:10px;border-radius:50%;display:inline-block;margin-right:3px}
-.leaflet-popup-content{font-size:12px}
-.area-vertex{background:#fff;border:2px solid var(--blue);border-radius:50%;width:12px!important;height:12px!important;margin-left:-6px!important;margin-top:-6px!important}
-@media(max-width:850px){
- body{display:flex;flex-direction:column;height:auto}
- #map{height:60vh;min-height:400px;order:0}
- aside{height:auto;order:1;border-right:0;border-top:1px solid var(--line)}
-}
+:root{--bg:#f4f7fb;--card:#fff;--tx:#172033;--mu:#667085;--bd:#dbe2ea;--blue:#2563eb;--teal:#14b8a6;--red:#ef4444;--yellow:#f59e0b;--purple:#7c3aed}
+*{box-sizing:border-box}html,body{height:100%;margin:0}body{font:14px/1.4 system-ui,-apple-system,Segoe UI,sans-serif;background:var(--bg);color:var(--tx);display:grid;grid-template-columns:365px 1fr}
+aside{background:var(--card);border-right:1px solid var(--bd);height:100vh;overflow:auto;padding:13px}#map{height:100vh;width:100%}
+h1{font-size:18px;margin:0 0 3px}h2{font-size:12px;text-transform:uppercase;letter-spacing:.05em;color:var(--mu);margin:15px 0 7px}
+.small{font-size:12px;color:var(--mu)}button,select,input{font:inherit;border-radius:8px;min-height:36px}
+button{border:0;background:var(--blue);color:#fff;padding:7px 10px;cursor:pointer;font-weight:600}button.alt{background:#eef2f7;color:var(--tx);border:1px solid var(--bd)}button.red{background:#fee2e2;color:#991b1b;border:1px solid #fecaca}button:disabled{opacity:.5;cursor:not-allowed}
+select,input[type=search],input[type=number]{width:100%;border:1px solid var(--bd);background:#fff;color:var(--tx);padding:7px}
+.row{display:flex;gap:5px;flex-wrap:wrap}.row>*{flex:1;min-width:100px}
+.card{border:1px solid var(--bd);border-radius:10px;padding:9px;margin:7px 0;background:#fff}
+label.range{display:block;margin:7px 0}.range span{float:right;color:var(--mu)}input[type=range]{width:100%;accent-color:var(--blue)}
+.chk label{display:inline-flex;align-items:center;gap:5px;margin:3px 10px 3px 0}
+.sw{display:inline-block;width:10px;height:10px;border-radius:3px}
+#msg{min-height:19px;color:var(--mu);font-size:12px}.result{border-bottom:1px solid var(--bd);padding:7px 2px;cursor:pointer}.result:last-child{border:0}
+.metricgrid{display:grid;grid-template-columns:1fr 1fr;gap:6px}.metric{background:#f8fafc;padding:7px;border-radius:8px}.metric b{display:block;font-size:15px}.metric span{font-size:10px;color:var(--mu)}
+#results{max-height:260px;overflow:auto}.point-label{background:#111c;color:#fff;border:0;box-shadow:none;font-weight:700;padding:1px 4px}.point-label:before{display:none}
+table{width:100%;border-collapse:collapse;font-size:11px}td,th{padding:4px;border-bottom:1px solid var(--bd);text-align:left}canvas{width:100%;height:150px;border:1px solid var(--bd);border-radius:8px;background:#fafafa}
+@media(max-width:850px){body{display:flex;flex-direction:column;height:auto}#map{height:58vh;min-height:390px;order:0}aside{height:auto;order:1;border:0}}
 </style>
 </head>
 <body>
 <aside>
-<h1>⛰️ Analizador de Relieve</h1>
-<div class="small">Delimita un área, consulta elevaciones reales y busca patrones anómalos del terreno. La detección es indicativa, no una identificación arqueológica o geológica.</div>
+<h1>🛰️ Detector de formas + relieve</h1>
+<div class="small">Conserva el análisis visual del app original y añade elevación, puntos de referencia, perfiles y detección de anomalías dentro de un área.</div>
 
 <h2>Mapa</h2>
-<form id="searchForm" class="row">
-<input id="search" type="search" placeholder="Buscar lugar…">
-<button>Ir</button>
-</form>
-<div class="row" style="margin-top:6px">
-<select id="base">
-<option value="sat">Satélite · Esri</option>
-<option value="osm">Calles · OpenStreetMap</option>
-</select>
-<button id="locate" class="secondary" type="button">Centrar</button>
+<form id="searchForm" class="row"><input id="q" type="search" placeholder="Buscar lugar…"><button>Ir</button></form>
+<div class="row" style="margin-top:5px">
+<select id="base"><option value="sat">Satélite · Esri</option><option value="osm">Calles · OpenStreetMap</option></select>
+<button id="center" class="alt" type="button">Centrar</button>
 </div>
 
 <h2>Área de análisis</h2>
 <div class="row">
-<button id="draw" type="button">＋ Delimitar</button>
-<button id="finish" class="secondary" type="button" disabled>✓ Terminar</button>
-<button id="clearArea" class="danger" type="button">Limpiar</button>
+<button id="areaMode" type="button">✚ Delimitar área</button>
+<button id="finishArea" class="alt" type="button" disabled>Terminar</button>
+<button id="clearAll" class="red" type="button">Limpiar</button>
 </div>
-<div class="small" id="areaInfo">Haz clic en “Delimitar” y marca los vértices en el mapa.</div>
+<div id="areaInfo" class="small">Puedes delimitar un polígono para limitar el análisis.</div>
 
-<h2>Muestreo de elevación</h2>
+<h2>Puntos de referencia</h2>
+<div class="row">
+<button id="pointMode" type="button">📍 Colocar puntos</button>
+<button id="clearPoints" class="alt" type="button">Borrar puntos</button>
+</div>
+<div class="small">En este modo, cada clic crea un punto. La app consulta su elevación y lo usa como referencia. Puedes colocar varios puntos.</div>
+<div id="pointsTable" class="card"><div class="small">Sin puntos.</div></div>
+
+<h2>Elevación</h2>
 <div class="grid2">
-<label class="small">Puntos máximos
-<select id="sampleCount">
-<option value="36">36</option><option value="64" selected>64</option><option value="100">100</option>
-</select></label>
-<label class="small">Intervalo de curvas
-<select id="contourStep">
-<option value="1">1 m</option><option value="2" selected>2 m</option><option value="5">5 m</option><option value="10">10 m</option>
-</select></label>
+<label class="small">Malla
+<select id="sampleN"><option>36</option><option selected>64</option><option>100</option></select></label>
+<label class="small">Curvas
+<select id="contourStep"><option>1</option><option selected>2</option><option>5</option><option>10</option></select></label>
 </div>
-<div class="row" style="margin-top:7px">
-<button id="analyze" type="button">Analizar elevación</button>
-<button id="contours" class="secondary" type="button">Curvas</button>
-</div>
-<div id="status"></div>
+<div class="row" style="margin-top:6px"><button id="elevAnalyze" type="button">⛰️ Analizar elevaciones</button><button id="contours" class="alt" type="button">Curvas</button></div>
+<div id="elevMsg" class="small"></div>
+
+<h2>Objetivo del análisis visual</h2>
+<select id="tg"><option value="0">Vegetación</option><option value="1">Suelo / no vegetación</option></select>
+<label class="chk"><input id="mask" type="checkbox"> Mostrar máscara</label>
+
+<h2>Filtros del detector original</h2>
+<div id="sl"></div>
+<h2>Formas</h2>
+<div id="ck" class="chk"></div>
+<div class="row"><button id="visualAnalyze" type="button">🔎 Analizar imagen</button><label class="chk" style="padding:7px"><input id="auto" type="checkbox"> Automático</label></div>
 
 <h2>Capas</h2>
-<div class="card">
-<label><input id="showSamples" type="checkbox" checked> Puntos de muestreo</label><br>
-<label><input id="showAnomalies" type="checkbox" checked> Anomalías</label><br>
-<label><input id="showGrid" type="checkbox"> Malla de muestreo</label>
+<div class="chk">
+<label><input id="showRef" type="checkbox" checked> Referencias</label>
+<label><input id="showGrid" type="checkbox"> Malla</label>
+<label><input id="showAnom" type="checkbox" checked> Anomalías</label>
+</div>
+
+<h2>Resumen del relieve</h2>
+<div class="metricgrid">
+<div class="metric"><b id="emin">—</b><span>Mínima</span></div><div class="metric"><b id="emax">—</b><span>Máxima</span></div>
+<div class="metric"><b id="erange">—</b><span>Desnivel</span></div><div class="metric"><b id="ecount">0</b><span>Puntos</span></div>
 </div>
 
 <h2>Resultados</h2>
-<div class="grid2">
-<div class="metric"><b id="minElev">—</b><span>Mínima</span></div>
-<div class="metric"><b id="maxElev">—</b><span>Máxima</span></div>
-<div class="metric"><b id="rangeElev">—</b><span>Desnivel</span></div>
-<div class="metric"><b id="anomalyCount">0</b><span>Anomalías</span></div>
-</div>
-<div id="results" class="card"><div class="small">Todavía no hay análisis.</div></div>
+<div id="results" class="card"><div class="small">Sin análisis.</div></div>
 
-<h2>Perfil de elevación</h2>
-<canvas id="profile" width="650" height="170"></canvas>
-<div class="small">Selecciona dos puntos del mapa para calcular un perfil aproximado entre ellos.</div>
-
-<h2>Leyenda</h2>
-<div class="legend">
-<span><i class="dot" style="background:#2563eb"></i>muestreo</span>
-<span><i class="dot" style="background:#ef4444"></i>pico/anomalía alta</span>
-<span><i class="dot" style="background:#7c3aed"></i>depresión</span>
-<span><i class="dot" style="background:#f59e0b"></i>pendiente fuerte</span>
-</div>
-<div class="small" style="margin-top:10px">Elevaciones: Open Topo Data / SRTM 30 m. La API pública tiene límites de consulta; la aplicación agrupa hasta 100 puntos por solicitud.</div>
+<h2>Perfil entre referencias</h2>
+<canvas id="profile" width="700" height="160"></canvas>
+<div class="small">Selecciona dos puntos de referencia en la tabla o coloca dos puntos y usa “Perfil”.</div>
 </aside>
-
 <div id="map"></div>
 
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 <script>
 'use strict';
-
 const $=id=>document.getElementById(id);
-const map=L.map('map',{zoomControl:true}).setView([20.12,-98.73],15);
-
+const map=L.map('map',{zoomSnap:1}).setView([20.12,-98.73],16);
 const bases={
- sat:L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}',{
-   maxZoom:19,crossOrigin:'anonymous',attribution:'Imágenes © Esri'
- }),
- osm:L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png',{
-   maxZoom:19,attribution:'© OpenStreetMap contributors'
- })
+ sat:L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}',{maxZoom:19,crossOrigin:'anonymous',attribution:'Imágenes © Esri'}),
+ osm:L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png',{maxZoom:19,crossOrigin:'anonymous',attribution:'© OpenStreetMap'})
 };
-let currentBase=bases.sat.addTo(map);
+let base=bases.sat.addTo(map);
+const visual=L.layerGroup().addTo(map),maskLayer=L.layerGroup().addTo(map),areaLayer=L.layerGroup().addTo(map),refLayer=L.layerGroup().addTo(map),gridLayer=L.layerGroup().addTo(map),anomLayer=L.layerGroup().addTo(map),contourLayer=L.layerGroup().addTo(map);
+const SL=[['thr','Umbral de vegetación (ExG)',0,50,10,''],['smo','Suavizado de máscara',0,5,2,''],['amin','Área mínima (px)',100,8000,600,''],['tol','Tolerancia rectángulo (%)',70,98,85,'%'],['ed','Umbral de bordes',30,400,150,''],['ml','Longitud mínima de línea (px)',20,300,80,'']];
+const SH=[['li','Líneas','#ff3b30'],['re','Rectángulos','#ffd60a'],['sq','Cuadrados','#0a84ff'],['ci','Círculos','#ff2dd0']];
+$('sl').innerHTML=SL.map(s=>`<label class="range">${s[1]} <span id="o_${s[0]}"></span><input type="range" id="${s[0]}" min="${s[2]}" max="${s[3]}" value="${s[4]}"></label>`).join('');
+$('ck').innerHTML=SH.map(s=>`<label><input type="checkbox" id="c_${s[0]}" checked><i class="sw" style="background:${s[2]}"></i>${s[1]}</label>`).join('');
 
-const areaLayer=L.layerGroup().addTo(map);
-const sampleLayer=L.layerGroup().addTo(map);
-const anomalyLayer=L.layerGroup().addTo(map);
-const gridLayer=L.layerGroup().addTo(map);
-const contourLayer=L.layerGroup().addTo(map);
-
-let vertices=[],vertexMarkers=[],polygon=null,drawing=false;
-let samples=[],anomalies=[],lastAnalysis=null,profilePoints=[];
-
-function status(t,err=false){
- $('status').textContent=t||'';
- $('status').style.color=err?'#b42318':'#667085';
+let area=[],areaMode=false,pointMode=false,refs=[],elevSamples=[],anomalies=[],src,W,H,S,Z,TL,MPP,BND,tm,profileRefs=[];
+function msg(t,err=false){$('msg').textContent=t||'';$('msg').style.color=err?'#b42318':'#667085'}
+function elevMsg(t,err=false){$('elevMsg').textContent=t||'';$('elevMsg').style.color=err?'#b42318':'#667085'}
+function fm(v){return Number.isFinite(v)?(Math.round(v*10)/10)+' m':'—'}
+function fa(v){return v>=10000?(v/10000).toFixed(2)+' ha':Math.round(v)+' m²'}
+function geoArea(p){
+ if(p.length<3)return 0;let lat=p.reduce((a,b)=>a+b.lat,0)/p.length*Math.PI/180,R=6371000,c=Math.cos(lat),xy=p.map(q=>[R*q.lng*Math.PI/180*c,R*q.lat*Math.PI/180]),s=0;
+ for(let i=0;i<xy.length;i++){let j=(i+1)%xy.length;s+=xy[i][0]*xy[j][1]-xy[j][0]*xy[i][1]}return Math.abs(s/2)
 }
-function fmtM(v){return Number.isFinite(v)?(Math.round(v*10)/10)+' m':'—'}
-function distance(a,b){return map.distance(a,b)}
-function pointInPolygon(lat,lng,poly){
- let inside=false;
- for(let i=0,j=poly.length-1;i<poly.length;j=i++){
-   const xi=poly[i].lng,yi=poly[i].lat,xj=poly[j].lng,yj=poly[j].lat;
-   const hit=((yi>lat)!==(yj>lat))&&(lng<(xj-xi)*(lat-yi)/(yj-yi)+xi);
-   if(hit)inside=!inside;
- }
- return inside;
+function inside(lat,lng,p){
+ let ok=false;for(let i=0,j=p.length-1;i<p.length;j=i++){let xi=p[i].lng,yi=p[i].lat,xj=p[j].lng,yj=p[j].lat,h=(yi>lat)!=(yj>lat)&&lng<(xj-xi)*(lat-yi)/(yj-yi)+xi;if(h)ok=!ok}return ok
 }
-function boundsOf(poly){
- const b=L.latLngBounds(poly.map(p=>[p.lat,p.lng])); return b;
-}
-function rebuildArea(){
+function redrawArea(){
  areaLayer.clearLayers();
- vertexMarkers=[];
- if(vertices.length){
-   vertices.forEach((p,i)=>{
-     const m=L.marker(p,{icon:L.divIcon({className:'area-vertex',iconSize:[12,12]})})
-       .bindTooltip('V'+(i+1),{direction:'top'});
-     vertexMarkers.push(m);areaLayer.addLayer(m);
-   });
- }
- if(vertices.length>=2){
-   const pts=vertices.map(p=>[p.lat,p.lng]);
-   areaLayer.addLayer(L.polyline(pts,{color:'#2563eb',weight:3,dashArray:'7 5'}));
- }
- if(vertices.length>=3){
-   polygon=L.polygon(vertices.map(p=>[p.lat,p.lng]),{
-     color:'#2563eb',weight:2,fillColor:'#2563eb',fillOpacity:.10
-   }).addTo(areaLayer);
-   const a=approxArea(vertices);
-   $('areaInfo').textContent='Área delimitada · '+formatArea(a)+' · '+vertices.length+' vértices.';
- }else{
-   $('areaInfo').textContent=vertices.length+' vértices. Se necesitan al menos 3.';
- }
+ area.forEach((p,i)=>L.marker(p,{icon:L.divIcon({className:'area-vertex',html:'',iconSize:[12,12]})}).bindTooltip('V'+(i+1)).addTo(areaLayer));
+ if(area.length>1)L.polyline(area,{color:'#2563eb',weight:3,dashArray:'7 5'}).addTo(areaLayer);
+ if(area.length>=3)L.polygon(area,{color:'#2563eb',fillColor:'#2563eb',fillOpacity:.08}).addTo(areaLayer);
+ $('areaInfo').textContent=area.length>=3?`Área: ${fa(geoArea(area))} · ${area.length} vértices.`:`${area.length} vértices · mínimo 3.`;
 }
-function approxArea(poly){
- let lat0=poly.reduce((s,p)=>s+p.lat,0)/poly.length*Math.PI/180;
- const R=6371000,c=Math.cos(lat0),pts=poly.map(p=>[R*p.lng*Math.PI/180*c,R*p.lat*Math.PI/180]);
- let s=0;
- for(let i=0;i<pts.length;i++){let j=(i+1)%pts.length;s+=pts[i][0]*pts[j][1]-pts[j][0]*pts[i][1]}
- return Math.abs(s/2);
-}
-function formatArea(a){return a>=10000?(a/10000).toFixed(2)+' ha':Math.round(a)+' m²'}
+$('areaMode').onclick=()=>{areaMode=true;pointMode=false;map.getContainer().style.cursor='crosshair';$('finishArea').disabled=false;msg('Haz clic para crear los vértices del área.')};
+$('finishArea').onclick=()=>{areaMode=false;map.getContainer().style.cursor='';$('finishArea').disabled=true;if(area.length>=3){redrawArea();map.fitBounds(L.latLngBounds(area),{padding:[25,25]});msg('Área terminada.');}};
+$('pointMode').onclick=()=>{pointMode=!pointMode;areaMode=false;map.getContainer().style.cursor=pointMode?'crosshair':'';msg(pointMode?'Modo puntos activo: cada clic agregará una referencia.':'Modo puntos desactivado.')};
+$('clearAll').onclick=()=>{area=[];refs=[];elevSamples=[];anomalies=[];areaLayer.clearLayers();refLayer.clearLayers();gridLayer.clearLayers();anomLayer.clearLayers();contourLayer.clearLayers();visual.clearLayers();maskLayer.clearLayers();$('areaInfo').textContent='Puedes delimitar un polígono para limitar el análisis.';renderRefs();renderRelief();$('results').innerHTML='<div class="small">Sin análisis.</div>';drawProfile([])};
+$('clearPoints').onclick=()=>{refs=[];refLayer.clearLayers();renderRefs();drawProfile([]);msg('Puntos de referencia borrados.')};
 
-$('draw').onclick=()=>{
- drawing=true;$('finish').disabled=false;
- status('Modo delimitación: haz clic en el mapa para agregar vértices.');
- map.getContainer().style.cursor='crosshair';
-};
-$('finish').onclick=()=>{
- drawing=false;$('finish').disabled=true;map.getContainer().style.cursor='';
- if(vertices.length>=3){ rebuildArea();map.fitBounds(boundsOf(vertices),{padding:[30,30]});status('Área lista. Ahora pulsa “Analizar elevación”.');}
-};
-$('clearArea').onclick=()=>{
- drawing=false;vertices=[];polygon=null;samples=[];anomalies=[];lastAnalysis=null;
- areaLayer.clearLayers();sampleLayer.clearLayers();anomalyLayer.clearLayers();gridLayer.clearLayers();contourLayer.clearLayers();
- $('finish').disabled=true;$('areaInfo').textContent='Haz clic en “Delimitar” y marca los vértices en el mapa.';
- $('results').innerHTML='<div class="small">Todavía no hay análisis.</div>';
- ['minElev','maxElev','rangeElev'].forEach(id=>$(id).textContent='—');$('anomalyCount').textContent='0';
- drawProfile([]);
-};
-
-map.on('click',e=>{
- if(drawing){
-   if(vertices.length<30){vertices.push(e.latlng);rebuildArea();}
- }else{
-   addProfilePoint(e.latlng);
- }
+map.on('click',async e=>{
+ if(areaMode){if(area.length<40){area.push(e.latlng);redrawArea()}return}
+ if(pointMode){await addReference(e.latlng);return}
+ if(refs.length>=2&&elevSamples.length){const n=nearestElev(e.latlng);if(n){L.popup().setLatLng(e.latlng).setContent(`<b>Elevación estimada</b><br>${fm(n.elevation)}<br><span class="small">Punto de muestreo más cercano</span>`).openOn(map)}}
 });
 
-function addProfilePoint(p){
- if(!lastAnalysis){status('Primero realiza un análisis de elevación.');return}
- const nearest=nearestSample(p);
- if(!nearest)return;
- profilePoints.push(nearest);
- if(profilePoints.length>2)profilePoints=profilePoints.slice(-2);
- drawProfile(profilePoints);
- L.popup().setLatLng(p).setContent(`<b>Punto de perfil</b><br>Elevación: ${fmtM(nearest.elevation)}`).openOn(map);
+async function addReference(latlng){
+ pointMode=false;map.getContainer().style.cursor='';const id=refs.length+1;
+ const r={id,lat:latlng.lat,lng:latlng.lng,elevation:null};
+ refs.push(r);renderRefs();elevMsg('Consultando elevación del punto '+id+'…');
+ try{const vals=await getElevations([r]);r.elevation=vals[0].elevation;renderRefs();elevMsg(`Punto ${id}: ${fm(r.elevation)}.`);if(refs.length>=2)drawProfile([refs.length-2,refs.length-1])}
+ catch(e){r.elevation=null;renderRefs();elevMsg('No se pudo obtener la elevación. Puedes reintentar colocando el punto de nuevo.',true)}
 }
-function nearestSample(p){
- let best=null,d=Infinity;
- samples.forEach(s=>{const x=distance(p,[s.lat,s.lng]);if(x<d){d=x;best=s}});
- return best;
-}
-
-$('base').onchange=e=>{
- map.removeLayer(currentBase);currentBase=bases[e.target.value].addTo(map);
-};
-$('searchForm').onsubmit=async e=>{
- e.preventDefault();const q=$('search').value.trim();if(!q)return;
- status('Buscando…');
- try{
-  const r=await fetch('https://nominatim.openstreetmap.org/search?format=json&limit=1&accept-language=es&q='+encodeURIComponent(q),{headers:{'Accept':'application/json'}});
-  const j=await r.json();
-  if(!j[0])throw new Error('No encontrado');
-  map.fitBounds([[+j[0].boundingbox[0],+j[0].boundingbox[2]],[+j[0].boundingbox[1],+j[0].boundingbox[3]]],{maxZoom:18});
-  status('Lugar encontrado.');
- }catch(err){status('No se pudo encontrar el lugar.',true)}
-};
-$('locate').onclick=()=>{
- if(!navigator.geolocation){status('Tu navegador no ofrece geolocalización.',true);return}
- navigator.geolocation.getCurrentPosition(p=>map.setView([p.coords.latitude,p.coords.longitude],16),
- ()=>status('No se pudo obtener la ubicación.',true));
-};
-
-function generateSamples(poly,maxN){
- const b=boundsOf(poly),minLat=b.getSouth(),maxLat=b.getNorth(),minLng=b.getWest(),maxLng=b.getEast();
- const aspect=Math.max(.1,(maxLng-minLng)*Math.cos(((minLat+maxLat)/2)*Math.PI/180))/Math.max(.1,maxLat-minLat);
- let cols=Math.max(2,Math.round(Math.sqrt(maxN*aspect))),rows=Math.max(2,Math.round(maxN/cols));
- let arr=[];
- for(let r=0;r<rows;r++)for(let c=0;c<cols;c++){
-   const lat=minLat+(r+.5)/rows*(maxLat-minLat);
-   const lng=minLng+(c+.5)/cols*(maxLng-minLng);
-   if(pointInPolygon(lat,lng,poly))arr.push({lat,lng,row:r,col:c});
- }
- if(arr.length>maxN){
-   const step=arr.length/maxN;arr=Array.from({length:maxN},(_,i)=>arr[Math.floor(i*step)]);
- }
- return arr;
-}
-
-async function elevationBatch(points){
- const MAX=100,all=[];
- for(let i=0;i<points.length;i+=MAX){
-   const chunk=points.slice(i,i+MAX);
-   const locations=chunk.map(p=>p.lat.toFixed(6)+','+p.lng.toFixed(6)).join('|');
-   const url='https://api.opentopodata.org/v1/srtm30m?locations='+encodeURIComponent(locations);
-   let response;
-   for(let attempt=0;attempt<3;attempt++){
-     try{
-       response=await fetch(url);
-       if(response.ok)break;
-     }catch(_){}
-     await new Promise(r=>setTimeout(r,1200*(attempt+1)));
-   }
-   if(!response||!response.ok)throw new Error('No se pudo consultar el servicio de elevación.');
-   const data=await response.json();
-   if(data.status!=='OK'||!Array.isArray(data.results))throw new Error('Respuesta de elevación inválida.');
-   data.results.forEach((r,k)=>{
-     all.push({...chunk[k],elevation:Number(r.elevation),dataset:r.dataset||'srtm30m'});
-   });
-   if(i+MAX<points.length)await new Promise(r=>setTimeout(r,1100));
- }
- return all;
-}
-
-function localStats(data,index){
- const s=data[index],neighbors=[];
- data.forEach((q,j)=>{
-   if(j===index)return;
-   const d=distance([s.lat,s.lng],[q.lat,q.lng]);
-   if(d<Math.max(250,localSpacing(data)*2.8))neighbors.push(q.elevation);
+function renderRefs(){
+ refLayer.clearLayers();
+ if(!$('showRef').checked)return;
+ refs.forEach(r=>{
+  const m=L.circleMarker([r.lat,r.lng],{radius:7,color:'#111827',weight:2,fillColor:'#14b8a6',fillOpacity:1}).bindTooltip(String(r.id),{permanent:true,direction:'center',className:'point-label'});
+  m.bindPopup(`<b>Referencia ${r.id}</b><br>Lat: ${r.lat.toFixed(6)}<br>Lng: ${r.lng.toFixed(6)}<br>Elevación: ${fm(r.elevation)}`);
+  m.addTo(refLayer);
  });
- if(neighbors.length<3)return null;
- const mean=neighbors.reduce((a,b)=>a+b,0)/neighbors.length;
- const sd=Math.sqrt(neighbors.reduce((a,b)=>a+(b-mean)**2,0)/neighbors.length)||.1;
- return {mean,sd,z:(s.elevation-mean)/sd,diff:s.elevation-mean};
+ const rows=refs.map(r=>`<tr><td>${r.id}</td><td>${r.lat.toFixed(5)}</td><td>${r.lng.toFixed(5)}</td><td><b>${fm(r.elevation)}</b></td><td><button type="button" class="alt" data-profile="${r.id}" style="min-height:26px;padding:3px 6px">Perfil</button></td></tr>`).join('');
+ $('pointsTable').innerHTML=refs.length?`<table><tr><th>#</th><th>Lat</th><th>Lng</th><th>Elev.</th><th></th></tr>${rows}</table>`:'<div class="small">Sin puntos.</div>';
+ $('pointsTable').querySelectorAll('[data-profile]').forEach(b=>b.onclick=()=>{let i=Number(b.dataset.profile)-1;if(refs.length>=2){profileRefs=[i];let second=refs.findIndex((x,j)=>j!==i&&x.elevation!=null);if(second>=0)drawProfile([i,second])}});
 }
-function localSpacing(data){
- let d=Infinity;
- for(let i=0;i<data.length;i++)for(let j=i+1;j<data.length;j++){
-  const x=distance([data[i].lat,data[i].lng],[data[j].lat,data[j].lng]);
-  if(x>1)d=Math.min(d,x);
- }
+$('showRef').onchange=renderRefs;
+
+async function getElevations(points){
+ const out=[];for(let i=0;i<points.length;i+=100){
+  const c=points.slice(i,i+100),loc=c.map(p=>p.lat.toFixed(6)+','+p.lng.toFixed(6)).join('|');
+  let response=null;
+  for(let a=0;a<3;a++){try{response=await fetch('https://api.opentopodata.org/v1/srtm30m?locations='+encodeURIComponent(loc));if(response.ok)break}catch(_){}await new Promise(r=>setTimeout(r,900*(a+1)))}
+  if(!response||!response.ok)throw new Error('Servicio de elevación no disponible');
+  const j=await response.json();if(j.status!=='OK')throw new Error('Respuesta de elevación inválida');
+  j.results.forEach((x,k)=>out.push({...c[k],elevation:Number(x.elevation),dataset:x.dataset||'srtm30m'}));
+  if(i+100<points.length)await new Promise(r=>setTimeout(r,1000));
+ }return out;
+}
+function makeSamples(){
+ if(area.length<3)return [];
+ const b=L.latLngBounds(area),n=Number($('sampleN').value),w=b.getEast()-b.getWest(),h=b.getNorth()-b.getSouth(),ratio=Math.max(.2,w/h),cols=Math.max(2,Math.round(Math.sqrt(n*ratio))),rows=Math.max(2,Math.round(n/cols)),a=[];
+ for(let y=0;y<rows;y++)for(let x=0;x<cols;x++){let lat=b.getSouth()+(y+.5)/rows*h,lng=b.getWest()+(x+.5)/cols*w;if(inside(lat,lng,area))a.push({lat,lng,row:y,col:x})}
+ return a.slice(0,n);
+}
+function nearestElev(p){let best=null,d=1e99;for(const s of elevSamples){let q=map.distance([p.lat,p.lng],[s.lat,s.lng]);if(q<d){d=q;best=s}}return best}
+function spacing(){
+ if(elevSamples.length<2)return 50;let d=1e99;
+ for(let i=0;i<elevSamples.length;i++)for(let j=i+1;j<elevSamples.length;j++){let x=map.distance([elevSamples[i].lat,elevSamples[i].lng],[elevSamples[j].lat,elevSamples[j].lng]);if(x>1)d=Math.min(d,x)}
  return Number.isFinite(d)?d:50;
 }
-
-function detectAnomalies(data){
- const out=[];
- const spacing=localSpacing(data);
- data.forEach((s,i)=>{
-   const st=localStats(data,i);if(!st)return;
-   const slope=Math.abs(st.diff)/Math.max(spacing,1)*57.2958;
-   let type='',score=0;
-   if(st.z>=1.7){type='Elevación anómala / posible pico';score=Math.min(99,60+st.z*10)}
-   else if(st.z<=-1.7){type='Depresión anómala';score=Math.min(99,60+Math.abs(st.z)*10)}
-   else if(slope>=12){type='Cambio fuerte de pendiente';score=Math.min(95,55+slope)}
-   if(type)out.push({...s,type,score:Math.round(score),neighborMean:st.mean,diff:st.diff,z:st.z,slope});
+function analyzeRelief(){
+ if(!elevSamples.length)return [];
+ const sp=spacing(),out=[];
+ elevSamples.forEach((s,i)=>{
+  const nb=elevSamples.filter((q,j)=>j!==i&&map.distance([s.lat,s.lng],[q.lat,q.lng])<sp*2.8).map(q=>q.elevation);
+  if(nb.length<3)return;
+  const mean=nb.reduce((a,b)=>a+b,0)/nb.length,sd=Math.sqrt(nb.reduce((a,b)=>a+(b-mean)**2,0)/nb.length)||.1,z=(s.elevation-mean)/sd,slope=Math.atan(Math.abs(s.elevation-mean)/sp)*180/Math.PI;
+  let type=null;if(z>=1.7)type='Pico / elevación anómala';else if(z<=-1.7)type='Depresión / cota anómala';else if(slope>=12)type='Cambio fuerte de pendiente';
+  if(type)out.push({...s,type,mean,diff:s.elevation-mean,z,slope,score:Math.min(99,Math.round(55+Math.abs(z)*12+slope*.7))});
  });
- out.sort((a,b)=>b.score-a.score);
- return out.slice(0,20);
+ return out.sort((a,b)=>b.score-a.score).slice(0,30);
 }
-
-function renderSamples(){
- sampleLayer.clearLayers();gridLayer.clearLayers();
- const show=$('showSamples').checked,grid=$('showGrid').checked;
- samples.forEach(s=>{
-   if(show)L.circleMarker([s.lat,s.lng],{radius:5,color:'#2563eb',weight:1,fillColor:'#fff',fillOpacity:.9})
-    .bindTooltip(fmtM(s.elevation),{direction:'top'}).addTo(sampleLayer);
-   if(grid)L.circleMarker([s.lat,s.lng],{radius:2,color:'#94a3b8',weight:1,fillOpacity:.4}).addTo(gridLayer);
- });
+function renderRelief(){
+ refLayer.clearLayers();renderRefs();gridLayer.clearLayers();anomLayer.clearLayers();
+ if(!$('showGrid').checked)return;
+ elevSamples.forEach(s=>L.circleMarker([s.lat,s.lng],{radius:2,color:'#94a3b8',weight:1,fillOpacity:.5}).addTo(gridLayer));
 }
+$('showGrid').onchange=renderRelief;
+$('showAnom').onchange=renderAnomalies;
 function renderAnomalies(){
- anomalyLayer.clearLayers();if(!$('showAnomalies').checked)return;
- anomalies.forEach((a,i)=>{
-   const high=a.z>=0, col=high?'#ef4444':a.z<=-1.7?'#7c3aed':'#f59e0b';
-   L.circle([a.lat,a.lng],{radius:Math.max(12,localSpacing(samples)*.42),color:col,weight:2,fillColor:col,fillOpacity:.18})
-    .bindPopup(`<b>Anomalía #${i+1}</b><br>${a.type}<br>Elevación: ${fmtM(a.elevation)}<br>Media vecina: ${fmtM(a.neighborMean)}<br>Diferencia: ${a.diff>=0?'+':''}${fmtM(a.diff)}<br>Pendiente aproximada: ${a.slope.toFixed(1)}°<br>Índice: ${a.score}/100`).addTo(anomalyLayer);
- });
+ anomLayer.clearLayers();if(!$('showAnom').checked)return;
+ anomalies.forEach((a,i)=>{let c=a.z>=1.7?'#ef4444':a.z<=-1.7?'#7c3aed':'#f59e0b';
+ L.circle([a.lat,a.lng],{radius:Math.max(12,spacing()*.45),color:c,weight:2,fillColor:c,fillOpacity:.16}).bindPopup(`<b>Anomalía ${i+1}</b><br>${a.type}<br>Elevación: ${fm(a.elevation)}<br>Media vecina: ${fm(a.mean)}<br>Diferencia: ${a.diff>=0?'+':''}${fm(a.diff)}<br>Pendiente aprox.: ${a.slope.toFixed(1)}°<br>Índice: ${a.score}/100`).addTo(anomLayer)});
 }
-
-$('showSamples').onchange=renderSamples;
-$('showGrid').onchange=renderSamples;
-$('showAnomalies').onchange=renderAnomalies;
-
-$('analyze').onclick=async()=>{
- if(vertices.length<3){status('Primero delimita un área con al menos 3 vértices.',true);return}
- if(map.getZoom()<12){status('Acerca el mapa a la zona de interés antes de analizar.',true);return}
- $('analyze').disabled=true;
- try{
-   status('Generando puntos de muestreo…');
-   const n=Number($('sampleCount').value);
-   const pts=generateSamples(vertices,n);
-   if(pts.length<4)throw new Error('El área es demasiado pequeña o la geometría no contiene puntos suficientes.');
-   status(`Consultando ${pts.length} elevaciones…`);
-   samples=await elevationBatch(pts);
-   if(samples.filter(s=>Number.isFinite(s.elevation)).length<4)throw new Error('No se obtuvieron suficientes elevaciones.');
-   lastAnalysis=samples;
-   anomalies=detectAnomalies(samples);
-   renderSamples();renderAnomalies();renderResults();drawProfile([]);
-   $('status').textContent=`Análisis terminado · ${samples.length} puntos · ${anomalies.length} patrones destacados.`;
- }catch(err){status(err.message||'Error durante el análisis.',true)}
- finally{$('analyze').disabled=false}
+$('elevAnalyze').onclick=async()=>{
+ if(area.length<3){elevMsg('Delimita primero un área con al menos 3 vértices.',true);return}
+ $('elevAnalyze').disabled=true;elevMsg('Generando malla…');
+ try{let pts=makeSamples();if(pts.length<4)throw new Error('El área es demasiado pequeña para generar una malla.');
+ elevMsg(`Consultando ${pts.length} elevaciones…`);elevSamples=await getElevations(pts);anomalies=analyzeRelief();renderRelief();renderAnomalies();renderReliefResults();elevMsg(`Listo: ${elevSamples.length} puntos analizados y ${anomalies.length} anomalías destacadas.`)}
+ catch(e){elevMsg(e.message||'No se pudo analizar la elevación.',true)}
+ finally{$('elevAnalyze').disabled=false}
 };
-
-function renderResults(){
- const vals=samples.map(s=>s.elevation).filter(Number.isFinite);
- const mn=Math.min(...vals),mx=Math.max(...vals);
- $('minElev').textContent=fmtM(mn);$('maxElev').textContent=fmtM(mx);$('rangeElev').textContent=fmtM(mx-mn);
- $('anomalyCount').textContent=anomalies.length;
- if(!anomalies.length){$('results').innerHTML='<div class="small">No se detectaron anomalías con los umbrales actuales. Esto no significa que no exista una forma particular.</div>';return}
- $('results').innerHTML=anomalies.map((a,i)=>`
- <div class="result" data-i="${i}">
-  <b>${i+1}. ${a.type}</b><br>
-  <span class="small">${fmtM(a.elevation)} · Δ ${a.diff>=0?'+':''}${fmtM(a.diff)} · pendiente ${a.slope.toFixed(1)}° · <span class="badge">${a.score}/100</span></span>
- </div>`).join('');
- document.querySelectorAll('.result').forEach(el=>el.onclick=()=>{
-   const a=anomalies[+el.dataset.i];map.setView([a.lat,a.lng],Math.max(map.getZoom(),17));
-   L.popup().setLatLng([a.lat,a.lng]).setContent(`<b>${a.type}</b><br>Elevación: ${fmtM(a.elevation)}<br>Diferencia local: ${a.diff>=0?'+':''}${fmtM(a.diff)}<br>Índice: ${a.score}/100`).openOn(map);
- });
+function renderReliefResults(){
+ let v=elevSamples.map(x=>x.elevation).filter(Number.isFinite),mn=Math.min(...v),mx=Math.max(...v);$('emin').textContent=fm(mn);$('emax').textContent=fm(mx);$('erange').textContent=fm(mx-mn);$('ecount').textContent=elevSamples.length;
+ $('results').innerHTML=anomalies.length?anomalies.map((a,i)=>`<div class="result" data-a="${i}"><b>${i+1}. ${a.type}</b><br><span class="small">${fm(a.elevation)} · Δ ${a.diff>=0?'+':''}${fm(a.diff)} · ${a.slope.toFixed(1)}° · índice ${a.score}/100</span></div>`).join(''):'<div class="small">No se detectaron anomalías con estos datos. Ajusta el tamaño del área o aumenta la densidad de muestreo.</div>';
+ $('results').querySelectorAll('[data-a]').forEach(x=>x.onclick=()=>{let a=anomalies[+x.dataset.a];map.setView([a.lat,a.lng],Math.max(17,map.getZoom()));L.popup().setLatLng([a.lat,a.lng]).setContent(`<b>${a.type}</b><br>${fm(a.elevation)} · diferencia ${fm(a.diff)}`).openOn(map)});
+}
+function drawProfile(indices){
+ const c=$('profile'),g=c.getContext('2d'),w=c.width,h=c.height;g.clearRect(0,0,w,h);
+ if(!indices||indices.length<2){g.fillStyle='#667085';g.font='12px system-ui';g.fillText('Coloca al menos dos referencias para ver el perfil.',15,70);return}
+ const A=refs[indices[0]],B=refs[indices[1]];if(!A||!B||A.elevation==null||B.elevation==null)return;
+ let N=30,v=[];for(let i=0;i<=N;i++){let t=i/N,p={lat:A.lat+(B.lat-A.lat)*t,lng:A.lng+(B.lng-A.lng)*t},n=nearestElev(p);v.push(n?n.elevation:A.elevation+(B.elevation-A.elevation)*t)}
+ let mn=Math.min(...v),mx=Math.max(...v),span=Math.max(1,mx-mn);g.strokeStyle='#d0d5dd';g.beginPath();g.moveTo(32,10);g.lineTo(32,h-25);g.lineTo(w-8,h-25);g.stroke();g.strokeStyle='#2563eb';g.lineWidth=2;g.beginPath();
+ v.forEach((z,i)=>{let x=34+(w-46)*i/N,y=10+(h-38)*(1-(z-mn)/span);i?g.lineTo(x,y):g.moveTo(x,y)});g.stroke();g.fillStyle='#172033';g.font='11px system-ui';g.fillText(mx.toFixed(1)+' m',3,17);g.fillText(mn.toFixed(1)+' m',3,h-28);g.fillText('P'+A.id,34,h-7);g.fillText('P'+B.id,w-25,h-7)
 }
 
-function drawProfile(two){
- const c=$('profile'),ctx=c.getContext('2d'),w=c.width,h=c.height;
- ctx.clearRect(0,0,w,h);ctx.strokeStyle='#d0d5dd';ctx.lineWidth=1;
- ctx.beginPath();ctx.moveTo(36,10);ctx.lineTo(36,h-25);ctx.lineTo(w-10,h-25);ctx.stroke();
- if(two.length<2){ctx.fillStyle='#667085';ctx.font='12px system-ui';ctx.fillText('Selecciona dos puntos del mapa',45,70);return}
- const A=two[0],B=two[1],N=24,pts=[];
- for(let i=0;i<=N;i++){
-   const t=i/N,lat=A.lat+(B.lat-A.lat)*t,lng=A.lng+(B.lng-A.lng)*t;
-   const near=nearestSample({lat,lng});pts.push(near?near.elevation:NaN);
- }
- const valid=pts.filter(Number.isFinite);if(valid.length<2)return;
- const mn=Math.min(...valid),mx=Math.max(...valid),span=Math.max(1,mx-mn);
- ctx.strokeStyle='#2563eb';ctx.lineWidth=2;ctx.beginPath();
- pts.forEach((v,i)=>{const x=38+(w-52)*i/N,y=10+(h-38)*(1-(v-mn)/span);if(i===0)ctx.moveTo(x,y);else ctx.lineTo(x,y)});ctx.stroke();
- ctx.fillStyle='#172033';ctx.font='11px system-ui';ctx.fillText(mx.toFixed(1)+' m',4,18);ctx.fillText(mn.toFixed(1)+' m',4,h-28);
- ctx.fillText('A',38,h-8);ctx.fillText('B',w-18,h-8);
+function capture(){
+ const c=map.getContainer(),r=c.getBoundingClientRect();S=Math.min(1,1100/Math.max(r.width,r.height));W=Math.max(1,Math.round(r.width*S));H=Math.max(1,Math.round(r.height*S));const cv=document.createElement('canvas');cv.width=W;cv.height=H;const g=cv.getContext('2d',{willReadFrequently:true});g.fillStyle='#000';g.fillRect(0,0,W,H);
+ const cs=[...map.getPane('tilePane').querySelectorAll('.leaflet-tile-container')];cs.forEach(k=>k.querySelectorAll('img').forEach(im=>{if(!im.complete||!im.naturalWidth)return;let b=im.getBoundingClientRect();try{g.drawImage(im,(b.left-r.left)*S,(b.top-r.top)*S,b.width*S,b.height*S)}catch(_){}}));
+ try{src=g.getImageData(0,0,W,H)}catch(e){msg('No se pudo leer la imagen del mapa por CORS. Usa el satélite Esri.',true);return false}
+ Z=map.getZoom();TL=map.project(map.containerPointToLatLng([0,0]),Z);BND=map.getBounds();MPP=40075016.686*Math.cos(map.getCenter().lat*Math.PI/180)/(256*Math.pow(2,Z));return true
 }
+const ll=(x,y)=>map.unproject(TL.add([x/S,y/S]),Z);
+function visualDetect(){
+ if(!src){if(!capture())return}
+ const v=k=>+$(k).value;SL.forEach(s=>$('o_'+s[0]).textContent=$(s[0]).value+s[5]);visual.clearLayers();maskLayer.clearLayers();const d=src.data,n=W*H,exg=new Float32Array(n),gr=new Float32Array(n);
+ for(let i=0;i<n;i++){let r=d[4*i],g=d[4*i+1],b=d[4*i+2];gr[i]=.299*r+.587*g+.114*b;exg[i]=(2*g-r-b)/255}
+ const thr=v('thr')/100,tg=+$('tg').value,m=new Uint8Array(n);for(let i=0;i<n;i++)m[i]=(exg[i]>thr)!=(tg==1)?1:0;
+ for(let k=0;k<v('smo');k++){let o=new Uint8Array(n);for(let y=1;y<H-1;y++)for(let x=1;x<W-1;x++){let p=y*W+x;o[p]=(m[p-W-1]+m[p-W]+m[p-W+1]+m[p-1]+m[p]+m[p+1]+m[p+W-1]+m[p+W]+m[p+W+1])>=5?1:0}m.set(o)}
+ if($('mask').checked){let c=document.createElement('canvas');c.width=W;c.height=H;let g=c.getContext('2d'),im=g.createImageData(W,H);for(let i=0;i<n;i++)if(m[i]){im.data[4*i]=40;im.data[4*i+1]=230;im.data[4*i+2]=80;im.data[4*i+3]=110}g.putImageData(im,0,0);L.imageOverlay(c.toDataURL(),BND,{interactive:false}).addTo(maskLayer)}
+ const out=[],on=k=>$('c_'+k).checked,col=k=>SH.find(s=>s[0]==k)[2],add=(k,txt,layer)=>{layer.addTo(visual);out.push({k,txt,layer})};
+ if(on('re')||on('sq')||on('ci')){const lab=new Uint8Array(n),st=new Int32Array(n),amin=v('amin'),tol=v('tol')/100;
+ for(let s=0;s<n;s++){if(!m[s]||lab[s])continue;let sp=0,a=0,sx=0,sy=0,b=[];st[sp++]=s;lab[s]=1;while(sp){let p=st[--sp],x=p%W,y=(p/W)|0;a++;sx+=x;sy+=y;let e=false;for(const q of [x>0?p-1:-1,x<W-1?p+1:-1,y>0?p-W:-1,y<H-1?p+W:-1]){if(q<0||!m[q])e=true;else if(!lab[q]){lab[q]=1;st[sp++]=q}}if(e)b.push(x,y)}if(a<amin)continue;
+ let best=null;for(let t=0;t<90;t+=3){let co=Math.cos(t*Math.PI/180),si=Math.sin(t*Math.PI/180),u0=1e9,u1=-1e9,v0=1e9,v1=-1e9;for(let i=0;i<b.length;i+=2){let u=b[i]*co+b[i+1]*si,w=-b[i]*si+b[i+1]*co;u0=Math.min(u0,u);u1=Math.max(u1,u);v0=Math.min(v0,w);v1=Math.max(v1,w)}let ar=(u1-u0+1)*(v1-v0+1);if(!best||ar<best.ar)best={ar,co,si,u0,u1,v0,v1}}
+ let ww=best.u1-best.u0+1,hh=best.v1-best.v0+1,fill=a/best.ar,ratio=Math.min(ww,hh)/Math.max(ww,hh),nb=b.length/2,mx=sx/a,my=sy/a,ds=0,ds2=0;for(let i=0;i<b.length;i+=2){let q=Math.hypot(b[i]-mx,b[i+1]-my);ds+=q;ds2+=q*q}let mr=ds/nb,sd=Math.sqrt(Math.max(0,ds2/nb-mr*mr))/mr,kind=null;if(sd<.1&&ratio>.85&&fill>.68&&fill<.86)kind='ci';else if(fill>=tol)kind=ratio>.88?'sq':'re';if(!kind||!on(kind))continue;let o={color:col(kind),weight:3,fillOpacity:.12};if(kind=='ci'){let rm=mr/S*MPP;add(kind,`Círculo ⌀ ${rm*2>=1000?(rm*2/1000).toFixed(2)+' km':Math.round(rm*2)+' m'} · área ${Math.round(Math.PI*rm*rm)} m²`,L.circle(ll(mx,my),{...o,radius:rm}))}else{let P=[[best.u0,best.v0],[best.u1,best.v0],[best.u1,best.v1],[best.u0,best.v1]].map(([u,q])=>ll(u*best.co-q*best.si,u*best.si+q*best.co));add(kind,`${kind=='sq'?'Cuadrado':'Rectángulo'} ${Math.round(ww/S*MPP)} × ${Math.round(hh/S*MPP)} m`,L.polygon(P,o))}}}
+ if(on('li')){let bl=new Float32Array(n);for(let y=1;y<H-1;y++)for(let x=1;x<W-1;x++){let p=y*W+x;bl[p]=(gr[p-W-1]+gr[p-W]+gr[p-W+1]+gr[p-1]+gr[p]+gr[p+1]+gr[p+W-1]+gr[p+W]+gr[p+W+1])/9}let E=new Uint8Array(n),ep=[],et=v('ed');for(let y=2;y<H-2;y++)for(let x=2;x<W-2;x++){let p=y*W+x,gx=bl[p-W+1]+2*bl[p+1]+bl[p+W+1]-bl[p-W-1]-2*bl[p-1]-bl[p-W+1],gy=bl[p+W-1]+2*bl[p+W]+bl[p+W+1]-bl[p-W-1]-2*bl[p-W]-bl[p-W+1];if(Math.abs(gx)+Math.abs(gy)>et){E[p]=1;ep.push(p)}}let T=90,D=Math.ceil(Math.hypot(W,H)),R=2*D+1,acc=new Uint16Array(T*R),tc=[],ts=[];for(let t=0;t<T;t++){tc.push(Math.cos(t*2*Math.PI/180));ts.push(Math.sin(t*2*Math.PI/180))}for(const p of ep){let x=p%W,y=(p/W)|0;for(let t=0;t<T;t++)acc[t*R+Math.round(x*tc[t]+y*ts[t])+D]++}let ml=v('ml'),cand=[];for(let i=0;i<acc.length;i++)if(acc[i]>=ml)cand.push(i);cand.sort((a,b)=>acc[b]-acc[a]);let pk=[];for(const i of cand){let t=(i/R)|0,r=i%R;if(pk.some(q=>Math.min(Math.abs(q.t-t),T-Math.abs(q.t-t))<=2&&Math.abs(q.r-r)<=8))continue;pk.push({t,r});if(pk.length>=40)break}for(const q of pk){let rho=q.r-D,ox=rho*tc[q.t],oy=rho*ts[q.t],dx=-ts[q.t],dy=tc[q.t],run=0,gap=0,s0=0,bL=0,bs=0,be=0;for(let s=-D;s<=D;s++){let x=Math.round(ox+dx*s),y=Math.round(oy+dy*s),hit=false;if(x>1&&y>1&&x<W-2&&y<H-2)hit=E[y*W+x]||E[y*W+x+1]||E[y*W+x-1]||E[(y+1)*W+x]||E[(y-1)*W+x];if(hit){if(!run)s0=s;run=1;gap=0;if(s-s0>bL){bL=s-s0;bs=s0;be=s}}else if(run&&++gap>5)run=0}if(bL>=ml)add('li',`Línea ${Math.round(bL/S*MPP)} m · rumbo ${Math.round((q.t*2+90)%180)}°`,L.polyline([ll(ox+dx*bs,oy+dy*bs),ll(ox+dx*be,oy+dy*be)],{color:col('li'),weight:3}))}}
+ out.forEach((o,i)=>{o.layer.bindTooltip(String(i+1),{permanent:true,direction:'center',className:'point-label'});o.layer.bindPopup(`${i+1}. ${o.txt}`)});
+ msg(`Análisis visual listo · ${out.length} formas · ${(MPP/S).toFixed(2)} m/px`);
+}
+$('visualAnalyze').onclick=()=>{msg('Analizando imagen…');setTimeout(()=>{if(capture())visualDetect()},30)};
+document.querySelectorAll('#sl input[type=range],#ck input,#tg,#mask').forEach(e=>e.addEventListener('input',()=>{clearTimeout(tm);tm=setTimeout(()=>{if(src)visualDetect()},120)}));
+let autoTimer;map.on('moveend',()=>{if($('auto').checked){clearTimeout(autoTimer);autoTimer=setTimeout(()=>{if(capture())visualDetect()},900)}});
+
+$('base').onchange=e=>{map.removeLayer(base);base=bases[e.target.value].addTo(map)};
+$('searchForm').onsubmit=async e=>{e.preventDefault();let q=$('q').value.trim();if(!q)return;msg('Buscando…');try{let r=await fetch('https://nominatim.openstreetmap.org/search?format=json&limit=1&accept-language=es&q='+encodeURIComponent(q)),j=await r.json();if(!j[0])throw 0;map.fitBounds([[+j[0].boundingbox[0],+j[0].boundingbox[2]],[+j[0].boundingbox[1],+j[0].boundingbox[3]]],{maxZoom:18});msg('Lugar encontrado.')}catch(_){msg('No se encontró el lugar.',true)}};
+$('center').onclick=()=>{if(!navigator.geolocation){msg('Geolocalización no disponible.',true);return}navigator.geolocation.getCurrentPosition(p=>map.setView([p.coords.latitude,p.coords.longitude],16),()=>msg('No se pudo obtener la ubicación.',true))};
 
 $('contours').onclick=()=>{
- if(!samples.length){status('Primero realiza un análisis.',true);return}
- contourLayer.clearLayers();
- const step=Number($('contourStep').value),vals=samples.map(s=>s.elevation),mn=Math.floor(Math.min(...vals)/step)*step,mx=Math.ceil(Math.max(...vals)/step)*step;
- for(let level=mn;level<=mx;level+=step){
-   const near=samples.filter(s=>Math.abs(s.elevation-level)<=Math.max(.5,step*.13));
-   if(near.length>=2){
-     near.sort((a,b)=>a.lng-b.lng);
-     const pts=near.map(s=>[s.lat,s.lng]);
-     L.polyline(pts,{color:'#14b8a6',weight:1.2,opacity:.55}).bindTooltip(level.toFixed(0)+' m').addTo(contourLayer);
-   }
- }
- status('Curvas aproximadas generadas a partir de los puntos muestreados.');
+ contourLayer.clearLayers();if(!elevSamples.length){elevMsg('Analiza primero las elevaciones.',true);return}
+ const step=Number($('contourStep').value),min=Math.floor(Math.min(...elevSamples.map(x=>x.elevation))/step)*step,max=Math.ceil(Math.max(...elevSamples.map(x=>x.elevation))/step)*step;
+ for(let level=min;level<=max;level+=step){let pts=elevSamples.filter(x=>Math.abs(x.elevation-level)<=Math.max(.6,step*.12)).sort((a,b)=>a.lng-b.lng);if(pts.length>=2)L.polyline(pts.map(x=>[x.lat,x.lng]),{color:'#14b8a6',weight:1,opacity:.6}).addTo(contourLayer)}
+ elevMsg('Curvas aproximadas generadas con la malla de elevación.');
 };
-
-function addDemoArea(){
- // Solo para que la app tenga una zona inicial clara; el usuario puede borrarla.
- vertices=[
-  L.latLng(20.126,-98.738),L.latLng(20.126,-98.728),
-  L.latLng(20.117,-98.728),L.latLng(20.117,-98.738)
- ];
- rebuildArea();map.fitBounds(boundsOf(vertices),{padding:[30,30]});
- status('Se cargó un área de ejemplo. Puedes limpiarla y dibujar otra.');
-}
-addDemoArea();
+SL.forEach(s=>$('o_'+s[0]).textContent=$(s[0]).value+s[5]);
 </script>
 </body>
 </html>
